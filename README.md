@@ -1,4 +1,4 @@
-# 🎮 Devanka TV Sleep Timer & PS4 Rental HUD System
+# 🎮 TV Sleep Timer & PS4 Rental HUD System
 
 A complete dual-app IoT management system designed for **PlayStation Rental Businesses** and **Smart TV automation**. Control TV rental sessions, view live countdown timers, display an unobtrusive floating HUD overlay over HDMI games, and automatically put the TV into sleep/standby mode when time expires.
 
