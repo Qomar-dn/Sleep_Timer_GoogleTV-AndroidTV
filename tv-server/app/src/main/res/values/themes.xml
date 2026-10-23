@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Dark Leanback theme for Android TV -->
+    <style name="AppTheme" parent="@style/Theme.Leanback">
+        <!-- Customize as needed -->
+    </style>
+</resources>

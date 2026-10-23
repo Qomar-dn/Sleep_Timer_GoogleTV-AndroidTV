@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">TV Sleep Remote</string>
+    <string name="connect">Hubungkan</string>
+    <string name="connected">Terhubung</string>
+    <string name="disconnected">Terputus</string>
+    <string name="cancel_timer">MATIKAN TIMER</string>
+    <string name="minutes_format">%d Menit</string>
+    <string name="hours_format">%d Jam</string>
+    <string name="remaining">Sisa Waktu</string>
+    <string name="no_timer">Timer Tidak Aktif</string>
+    <string name="server_label">IP Televisi</string>
+    <string name="timer_set">Timer diatur %d menit</string>
+    <string name="timer_cancelled">Timer dimatikan</string>
+    <string name="connection_error">Gagal terhubung ke TV</string>
+    <string name="title">Sleep Timer Remote</string>
+    <string name="subtitle">Devanka Playstations</string>
+    <string name="preset_15">15 Menit</string>
+    <string name="preset_30">30 Menit</string>
+    <string name="preset_45">45 Menit</string>
+    <string name="preset_1h">1 Jam</string>
+    <string name="preset_2h">2 Jam</string>
+    <string name="preset_3h">3 Jam</string>
+    <string name="custom_section_title">Atur Waktu Kustom</string>
+    <string name="custom_hint">Menit (cth: 90)</string>
+    <string name="btn_set_custom">Mulai</string>
+    <string name="invalid_minutes">Masukkan durasi antara 1 - 1440 menit</string>
+</resources>

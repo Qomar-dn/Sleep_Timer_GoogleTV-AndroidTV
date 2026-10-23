@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Sleep Timer Server</string>
+
+    <!-- Labels -->
+    <string name="label_server_ip">Server IP Address</string>
+    <string name="label_port">Port</string>
+    <string name="label_timer">Timer Status</string>
+
+    <!-- Placeholders -->
+    <string name="placeholder_ip">Loading…</string>
+
+    <!-- Timer states -->
+    <string name="timer_inactive">Inactive</string>
+    <string name="timer_format">%02d:%02d</string>
+
+    <!-- Service states -->
+    <string name="service_running">● Server Running</string>
+    <string name="service_stopped">● Server Stopped</string>
+
+    <!-- Buttons -->
+    <string name="button_start_server">Start Server</string>
+    <string name="button_stop_server">Stop Server</string>
+
+    <!-- Notifications -->
+    <string name="notification_channel_name">Sleep Timer</string>
+    <string name="notification_channel_desc">Shows sleep timer countdown</string>
+    <string name="notification_title">Sleep Timer Active</string>
+    <string name="notification_idle">Server running — no timer set</string>
+    <string name="notification_countdown">Sleeping in %s</string>
+
+    <!-- Device Admin -->
+    <string name="device_admin_description">Required to put the TV to sleep when the timer expires.</string>
+</resources>

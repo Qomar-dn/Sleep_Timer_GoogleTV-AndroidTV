@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="bg_primary">#0D0D1A</color>
+    <color name="bg_card">#1A1A2E</color>
+    <color name="accent_purple">#7B2FBE</color>
+    <color name="accent_cyan">#00D4FF</color>
+    <color name="accent_red">#FF3B5C</color>
+    <color name="text_primary">#FFFFFF</color>
+    <color name="text_secondary">#9E9EB8</color>
+    <color name="status_connected">#00E676</color>
+    <color name="status_disconnected">#FF3B5C</color>
+    <color name="button_bg">#2A2A3E</color>
+</resources>

@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Main activity layout for the Sleep Timer Server.
+  Dark background, centered content with server info and timer status.
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#1A1A2E"
+    android:gravity="center"
+    android:orientation="vertical"
+    android:padding="48dp">
+
+    <!-- App Title -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/app_name"
+        android:textColor="#E0E0E0"
+        android:textSize="36sp"
+        android:textStyle="bold"
+        android:layout_marginBottom="32dp" />
+
+    <!-- Server IP Address -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/label_server_ip"
+        android:textColor="#9E9E9E"
+        android:textSize="16sp"
+        android:layout_marginBottom="4dp" />
+
+    <TextView
+        android:id="@+id/text_ip_address"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/placeholder_ip"
+        android:textColor="#BB86FC"
+        android:textSize="24sp"
+        android:textStyle="bold"
+        android:layout_marginBottom="24dp" />
+
+    <!-- Server Port -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/label_port"
+        android:textColor="#9E9E9E"
+        android:textSize="16sp"
+        android:layout_marginBottom="4dp" />
+
+    <TextView
+        android:id="@+id/text_port"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="8765"
+        android:textColor="#BB86FC"
+        android:textSize="24sp"
+        android:textStyle="bold"
+        android:layout_marginBottom="32dp" />
+
+    <!-- Timer Status (large countdown) -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/label_timer"
+        android:textColor="#9E9E9E"
+        android:textSize="16sp"
+        android:layout_marginBottom="4dp" />
+
+    <TextView
+        android:id="@+id/text_timer_status"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/timer_inactive"
+        android:textColor="#03DAC5"
+        android:textSize="48sp"
+        android:textStyle="bold"
+        android:layout_marginBottom="48dp" />
+
+    <!-- Service Status -->
+    <TextView
+        android:id="@+id/text_service_status"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/service_stopped"
+        android:textColor="#CF6679"
+        android:textSize="18sp"
+        android:layout_marginBottom="24dp" />
+
+    <!-- Start / Stop Server Button -->
+    <Button
+        android:id="@+id/button_toggle_service"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:minWidth="220dp"
+        android:text="@string/button_start_server"
+        android:textSize="18sp"
+        android:focusable="true"
+        android:focusableInTouchMode="true" />
+
+</LinearLayout>
