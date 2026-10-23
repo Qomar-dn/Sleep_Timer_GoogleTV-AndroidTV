@@ -4,6 +4,19 @@ A complete dual-app IoT management system designed for **PlayStation Rental Busi
 
 ---
 
+## 📥 Download File APK (Siap Install)
+
+Silakan unduh file APK versi resmi terbaru di bawah ini:
+
+| Aplikasi | Target Perangkat | Link Download APK |
+| :--- | :--- | :--- |
+| 📺 **TV Companion Server** | Diinstal di **Android TV / Google TV** | [⬇️ **Download Devanka-TV-Sleep-Server.apk**](https://github.com/Qomar-dn/Sleep_Timer_GoogleTV-AndroidTV/releases/download/v1.0.0/Devanka-TV-Sleep-Server.apk) |
+| 📱 **Phone Remote Control** | Diinstal di **Smartphone Android** | [⬇️ **Download Devanka-TV-Sleep-Remote.apk**](https://github.com/Qomar-dn/Sleep_Timer_GoogleTV-AndroidTV/releases/download/v1.0.0/Devanka-TV-Sleep-Remote.apk) |
+
+> 📦 Seluruh versi rilis resmi juga dapat diakses langsung melalui [GitHub Releases](https://github.com/Qomar-dn/Sleep_Timer_GoogleTV-AndroidTV/releases).
+
+---
+
 ## 🌟 Key Features
 
 ### 📺 1. TV Companion Server (`tv-server`)
