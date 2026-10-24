@@ -11,27 +11,210 @@
         android:layout_height="wrap_content"
         android:orientation="vertical"
         android:gravity="center_horizontal"
-        android:padding="20dp">
+        android:padding="18dp">
 
-        <!-- Title Section -->
-        <TextView
-            android:layout_width="wrap_content"
+        <!-- Top Header: Title & Action Menus (Guide & About) -->
+        <LinearLayout
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="@string/title"
-            android:textColor="@color/text_primary"
-            android:textSize="22sp"
-            android:textStyle="bold"
-            android:fontFamily="sans-serif-medium"
-            android:layout_marginTop="4dp" />
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginBottom="12dp">
 
-        <TextView
-            android:layout_width="wrap_content"
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/title"
+                    android:textColor="@color/text_primary"
+                    android:textSize="20sp"
+                    android:textStyle="bold"
+                    android:fontFamily="sans-serif-medium" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Devanka Playstations • v2.0"
+                    android:textColor="@color/accent_cyan"
+                    android:textSize="12sp"
+                    android:fontFamily="sans-serif-light" />
+            </LinearLayout>
+
+            <!-- Guide Button -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnGuide"
+                style="@style/Widget.Material3.Button.IconButton.Filled.Tonal"
+                android:layout_width="44dp"
+                android:layout_height="44dp"
+                android:backgroundTint="@color/button_bg"
+                app:icon="@drawable/ic_book"
+                app:iconTint="@color/accent_cyan"
+                app:iconSize="20dp"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
+                android:layout_marginEnd="6dp"
+                android:contentDescription="Cara Penggunaan" />
+
+            <!-- About Button -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnAbout"
+                style="@style/Widget.Material3.Button.IconButton.Filled.Tonal"
+                android:layout_width="44dp"
+                android:layout_height="44dp"
+                android:backgroundTint="@color/button_bg"
+                app:icon="@drawable/ic_info"
+                app:iconTint="@color/accent_purple"
+                app:iconSize="20dp"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
+                android:contentDescription="Tentang Aplikasi" />
+        </LinearLayout>
+
+        <!-- Multi-TV Selector Card -->
+        <LinearLayout
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="@string/subtitle"
-            android:textColor="@color/accent_cyan"
-            android:textSize="13sp"
-            android:fontFamily="sans-serif-light"
-            android:layout_marginBottom="12dp" />
+            android:orientation="vertical"
+            android:background="@drawable/bg_custom_card"
+            android:padding="12dp"
+            android:layout_marginBottom="14dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginBottom="8dp">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="PILIH TELEVISI (SLOT 1 - 5)"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="11sp"
+                    android:textStyle="bold"
+                    android:letterSpacing="0.05" />
+
+                <TextView
+                    android:id="@+id/textCurrentTvBadge"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Aktif: TV 1"
+                    android:textColor="@color/accent_cyan"
+                    android:textSize="12sp"
+                    android:textStyle="bold" />
+
+                <!-- Edit TV button -->
+                <ImageView
+                    android:id="@+id/btnEditTv"
+                    android:layout_width="22dp"
+                    android:layout_height="22dp"
+                    android:src="@drawable/ic_edit"
+                    app:tint="@color/text_secondary"
+                    android:padding="2dp"
+                    android:layout_marginStart="8dp"
+                    android:contentDescription="Edit TV" />
+            </LinearLayout>
+
+            <!-- TV Chips Row -->
+            <HorizontalScrollView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:scrollbars="none">
+
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal">
+
+                    <!-- TV 1 -->
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/chipTv1"
+                        style="@style/Widget.Material3.Button.TextButton"
+                        android:layout_width="wrap_content"
+                        android:layout_height="38dp"
+                        android:background="@drawable/bg_tv_chip_selected"
+                        android:text="TV 1"
+                        android:textColor="@color/text_primary"
+                        android:textSize="12sp"
+                        android:textStyle="bold"
+                        android:layout_marginEnd="6dp"
+                        android:insetTop="0dp"
+                        android:insetBottom="0dp"
+                        android:paddingStart="14dp"
+                        android:paddingEnd="14dp" />
+
+                    <!-- TV 2 -->
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/chipTv2"
+                        style="@style/Widget.Material3.Button.TextButton"
+                        android:layout_width="wrap_content"
+                        android:layout_height="38dp"
+                        android:background="@drawable/bg_tv_chip_unselected"
+                        android:text="TV 2"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="12sp"
+                        android:layout_marginEnd="6dp"
+                        android:insetTop="0dp"
+                        android:insetBottom="0dp"
+                        android:paddingStart="14dp"
+                        android:paddingEnd="14dp" />
+
+                    <!-- TV 3 -->
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/chipTv3"
+                        style="@style/Widget.Material3.Button.TextButton"
+                        android:layout_width="wrap_content"
+                        android:layout_height="38dp"
+                        android:background="@drawable/bg_tv_chip_unselected"
+                        android:text="TV 3"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="12sp"
+                        android:layout_marginEnd="6dp"
+                        android:insetTop="0dp"
+                        android:insetBottom="0dp"
+                        android:paddingStart="14dp"
+                        android:paddingEnd="14dp" />
+
+                    <!-- TV 4 -->
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/chipTv4"
+                        style="@style/Widget.Material3.Button.TextButton"
+                        android:layout_width="wrap_content"
+                        android:layout_height="38dp"
+                        android:background="@drawable/bg_tv_chip_unselected"
+                        android:text="TV 4"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="12sp"
+                        android:layout_marginEnd="6dp"
+                        android:insetTop="0dp"
+                        android:insetBottom="0dp"
+                        android:paddingStart="14dp"
+                        android:paddingEnd="14dp" />
+
+                    <!-- TV 5 -->
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/chipTv5"
+                        style="@style/Widget.Material3.Button.TextButton"
+                        android:layout_width="wrap_content"
+                        android:layout_height="38dp"
+                        android:background="@drawable/bg_tv_chip_unselected"
+                        android:text="TV 5"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="12sp"
+                        android:insetTop="0dp"
+                        android:insetBottom="0dp"
+                        android:paddingStart="14dp"
+                        android:paddingEnd="14dp" />
+                </LinearLayout>
+            </HorizontalScrollView>
+        </LinearLayout>
 
         <!-- Connection Section -->
         <LinearLayout
@@ -77,7 +260,7 @@
             android:layout_height="wrap_content"
             android:orientation="horizontal"
             android:gravity="center_vertical"
-            android:layout_marginBottom="16dp">
+            android:layout_marginBottom="14dp">
 
             <View
                 android:id="@+id/viewStatusDot"
@@ -98,9 +281,9 @@
         <!-- Circular Timer View -->
         <com.devanka.sleepremote.CircularTimerView
             android:id="@+id/circularTimerView"
-            android:layout_width="200dp"
-            android:layout_height="200dp"
-            android:layout_marginBottom="8dp" />
+            android:layout_width="190dp"
+            android:layout_height="190dp"
+            android:layout_marginBottom="6dp" />
 
         <!-- Remaining Time Text -->
         <TextView
@@ -109,7 +292,7 @@
             android:layout_height="wrap_content"
             android:text="@string/remaining"
             android:textColor="@color/text_secondary"
-            android:textSize="13sp"
+            android:textSize="12sp"
             android:layout_marginBottom="2dp" />
 
         <TextView
@@ -118,7 +301,7 @@
             android:layout_height="wrap_content"
             android:text="00:00"
             android:textColor="@color/text_primary"
-            android:textSize="38sp"
+            android:textSize="36sp"
             android:textStyle="bold"
             android:fontFamily="sans-serif-medium"
             android:layout_marginBottom="2dp" />
@@ -130,7 +313,7 @@
             android:text="@string/no_timer"
             android:textColor="@color/text_secondary"
             android:textSize="12sp"
-            android:layout_marginBottom="18dp" />
+            android:layout_marginBottom="16dp" />
 
         <!-- Preset Buttons Grid -->
         <GridLayout
@@ -140,13 +323,13 @@
             android:rowCount="2"
             android:alignmentMode="alignBounds"
             android:useDefaultMargins="false"
-            android:layout_marginBottom="16dp">
+            android:layout_marginBottom="14dp">
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btn15"
                 style="@style/Widget.Material3.Button.TextButton"
                 android:layout_width="0dp"
-                android:layout_height="52dp"
+                android:layout_height="50dp"
                 android:layout_margin="3dp"
                 android:background="@drawable/bg_button_preset"
                 android:text="@string/preset_15"
@@ -160,7 +343,7 @@
                 android:id="@+id/btn30"
                 style="@style/Widget.Material3.Button.TextButton"
                 android:layout_width="0dp"
-                android:layout_height="52dp"
+                android:layout_height="50dp"
                 android:layout_margin="3dp"
                 android:background="@drawable/bg_button_preset"
                 android:text="@string/preset_30"
@@ -174,7 +357,7 @@
                 android:id="@+id/btn45"
                 style="@style/Widget.Material3.Button.TextButton"
                 android:layout_width="0dp"
-                android:layout_height="52dp"
+                android:layout_height="50dp"
                 android:layout_margin="3dp"
                 android:background="@drawable/bg_button_preset"
                 android:text="@string/preset_45"
@@ -188,12 +371,12 @@
                 android:id="@+id/btn60"
                 style="@style/Widget.Material3.Button.TextButton"
                 android:layout_width="0dp"
-                android:layout_height="52dp"
+                android:layout_height="50dp"
                 android:layout_margin="3dp"
                 android:background="@drawable/bg_button_preset"
                 android:text="@string/preset_1h"
                 android:textColor="@color/accent_cyan"
-                android:textSize="14sp"
+                android:textSize="13sp"
                 android:textStyle="bold"
                 android:layout_columnWeight="1"
                 android:insetTop="0dp"
@@ -203,12 +386,12 @@
                 android:id="@+id/btn120"
                 style="@style/Widget.Material3.Button.TextButton"
                 android:layout_width="0dp"
-                android:layout_height="52dp"
+                android:layout_height="50dp"
                 android:layout_margin="3dp"
                 android:background="@drawable/bg_button_preset"
                 android:text="@string/preset_2h"
                 android:textColor="@color/accent_cyan"
-                android:textSize="14sp"
+                android:textSize="13sp"
                 android:textStyle="bold"
                 android:layout_columnWeight="1"
                 android:insetTop="0dp"
@@ -218,12 +401,12 @@
                 android:id="@+id/btn180"
                 style="@style/Widget.Material3.Button.TextButton"
                 android:layout_width="0dp"
-                android:layout_height="52dp"
+                android:layout_height="50dp"
                 android:layout_margin="3dp"
                 android:background="@drawable/bg_button_preset"
                 android:text="@string/preset_3h"
                 android:textColor="@color/accent_cyan"
-                android:textSize="14sp"
+                android:textSize="13sp"
                 android:textStyle="bold"
                 android:layout_columnWeight="1"
                 android:insetTop="0dp"
@@ -236,17 +419,17 @@
             android:layout_height="wrap_content"
             android:orientation="vertical"
             android:background="@drawable/bg_custom_card"
-            android:padding="14dp"
-            android:layout_marginBottom="16dp">
+            android:padding="12dp"
+            android:layout_marginBottom="14dp">
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/custom_section_title"
                 android:textColor="@color/text_secondary"
-                android:textSize="13sp"
+                android:textSize="12sp"
                 android:textStyle="bold"
-                android:layout_marginBottom="10dp" />
+                android:layout_marginBottom="8dp" />
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -258,8 +441,8 @@
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/btnMinus"
                     style="@style/Widget.Material3.Button.TextButton"
-                    android:layout_width="48dp"
-                    android:layout_height="48dp"
+                    android:layout_width="46dp"
+                    android:layout_height="46dp"
                     android:background="@drawable/bg_button_stepper"
                     android:text="-15"
                     android:textColor="@color/text_primary"
@@ -273,13 +456,13 @@
                 <EditText
                     android:id="@+id/editCustomMinutes"
                     android:layout_width="0dp"
-                    android:layout_height="48dp"
+                    android:layout_height="46dp"
                     android:layout_weight="1"
                     android:background="@drawable/bg_ip_field"
                     android:hint="@string/custom_hint"
                     android:textColorHint="@color/text_secondary"
                     android:textColor="@color/text_primary"
-                    android:textSize="15sp"
+                    android:textSize="14sp"
                     android:gravity="center"
                     android:inputType="number"
                     android:singleLine="true"
@@ -289,8 +472,8 @@
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/btnPlus"
                     style="@style/Widget.Material3.Button.TextButton"
-                    android:layout_width="48dp"
-                    android:layout_height="48dp"
+                    android:layout_width="46dp"
+                    android:layout_height="46dp"
                     android:background="@drawable/bg_button_stepper"
                     android:text="+15"
                     android:textColor="@color/text_primary"
@@ -305,10 +488,10 @@
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/btnSetCustom"
                     android:layout_width="wrap_content"
-                    android:layout_height="48dp"
+                    android:layout_height="46dp"
                     android:text="@string/btn_set_custom"
                     android:textColor="@color/text_primary"
-                    android:textSize="14sp"
+                    android:textSize="13sp"
                     android:textStyle="bold"
                     android:backgroundTint="@color/accent_purple"
                     android:insetTop="0dp"
@@ -321,7 +504,7 @@
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnCancel"
             android:layout_width="match_parent"
-            android:layout_height="52dp"
+            android:layout_height="50dp"
             android:text="@string/cancel_timer"
             android:textColor="@color/text_primary"
             android:textSize="15sp"

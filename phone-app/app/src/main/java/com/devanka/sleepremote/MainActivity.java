@@ -1,34 +1,39 @@
 package com.devanka.sleepremote;
 
-import android.content.SharedPreferences;
+import android.app.Dialog;
+import android.graphics.Color;
+import android.graphics.drawable.ColorDrawable;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.text.TextUtils;
 import android.view.View;
+import android.view.Window;
+import android.widget.EditText;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.devanka.sleepremote.databinding.ActivityMainBinding;
+import com.google.android.material.button.MaterialButton;
 
+import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 /**
- * Main activity for the Sleep Timer Remote app.
- * Provides a gaming-themed dark UI to control a TV sleep timer over HTTP.
+ * Main activity for the Sleep Timer Remote app (v2.0).
+ * Provides multi-TV management (TV 1 to 5), Wake-on-LAN, gaming-themed UI,
+ * in-app user guide, and developer about dialog.
  */
 public class MainActivity extends AppCompatActivity {
 
-    private static final String PREFS_NAME = "sleep_remote_prefs";
-    private static final String KEY_LAST_IP = "last_ip";
-    private static final String KEY_LAST_MAC = "last_mac";
-    private static final String DEFAULT_IP = "192.168.1.78";
     private static final long POLL_INTERVAL_MS = 1000;
 
     private ActivityMainBinding binding;
+    private TvDeviceManager deviceManager;
     private final TvApiClient apiClient = new TvApiClient();
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private final Handler handler = new Handler(Looper.getMainLooper());
@@ -36,6 +41,8 @@ public class MainActivity extends AppCompatActivity {
     private String currentIp = "";
     private boolean isConnected = false;
     private boolean isPolling = false;
+
+    private MaterialButton[] tvChips;
 
     /** Runnable that periodically polls the TV server for status. */
     private final Runnable pollRunnable = new Runnable() {
@@ -53,8 +60,11 @@ public class MainActivity extends AppCompatActivity {
         binding = ActivityMainBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
 
-        loadSavedIp();
+        deviceManager = new TvDeviceManager(this);
+
+        setupTvChips();
         setupClickListeners();
+        selectTv(deviceManager.getSelectedIndex(), false);
     }
 
     @Override
@@ -78,37 +88,122 @@ public class MainActivity extends AppCompatActivity {
         executor.shutdown();
     }
 
-    /**
-     * Loads the last-used IP address from SharedPreferences and populates
-     * the IP EditText. If no saved IP, focuses the field for input.
-     */
-    private void loadSavedIp() {
-        SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
-        String savedIp = prefs.getString(KEY_LAST_IP, "");
-        if (TextUtils.isEmpty(savedIp)) {
-            binding.editIpAddress.setText(DEFAULT_IP);
-            binding.editIpAddress.requestFocus();
-            binding.editIpAddress.selectAll();
-        } else {
-            binding.editIpAddress.setText(savedIp);
+    // ──────────────────────────────────────────────────────────────────────────
+    // Multi-TV Management (TV 1 - 5)
+    // ──────────────────────────────────────────────────────────────────────────
+
+    private void setupTvChips() {
+        tvChips = new MaterialButton[]{
+                binding.chipTv1,
+                binding.chipTv2,
+                binding.chipTv3,
+                binding.chipTv4,
+                binding.chipTv5
+        };
+
+        for (int i = 0; i < tvChips.length; i++) {
+            final int index = i;
+            tvChips[i].setOnClickListener(v -> selectTv(index, true));
+        }
+
+        binding.btnEditTv.setOnClickListener(v -> showEditTvDialog(deviceManager.getSelectedIndex()));
+    }
+
+    /** Selects a TV slot (0 to 4) and updates the UI accordingly. */
+    private void selectTv(int index, boolean attemptAutoConnect) {
+        if (isConnected) {
+            stopPolling();
+            isConnected = false;
+            updateConnectionUI(false);
+        }
+
+        deviceManager.setSelectedIndex(index);
+        List<TvDevice> list = deviceManager.getDevices();
+        TvDevice currentDevice = deviceManager.getSelectedDevice();
+
+        // Update chips styling and labels
+        for (int i = 0; i < tvChips.length; i++) {
+            if (i < list.size()) {
+                tvChips[i].setText("TV " + list.get(i).getId());
+            }
+            if (i == index) {
+                tvChips[i].setBackgroundResource(R.drawable.bg_tv_chip_selected);
+                tvChips[i].setTextColor(getColor(R.color.text_primary));
+            } else {
+                tvChips[i].setBackgroundResource(R.drawable.bg_tv_chip_unselected);
+                tvChips[i].setTextColor(getColor(R.color.text_secondary));
+            }
+        }
+
+        if (currentDevice != null) {
+            binding.textCurrentTvBadge.setText(String.format("Aktif: %s", currentDevice.getName()));
+            binding.editIpAddress.setText(currentDevice.getIp());
+            currentIp = currentDevice.getIp();
+
+            if (attemptAutoConnect && !TextUtils.isEmpty(currentIp)) {
+                onConnectClicked();
+            }
         }
     }
 
-    /**
-     * Saves the given IP address to SharedPreferences for next launch.
-     *
-     * @param ip The IP address to persist.
-     */
-    private void saveIp(String ip) {
-        getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
-                .edit()
-                .putString(KEY_LAST_IP, ip)
-                .apply();
+    /** Shows the dialog to edit TV Name, IP address, and MAC address. */
+    private void showEditTvDialog(int slotIndex) {
+        final TvDevice device = deviceManager.getDevices().get(slotIndex);
+        if (device == null) return;
+
+        Dialog dialog = new Dialog(this);
+        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
+        dialog.setContentView(R.layout.dialog_edit_tv);
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+        }
+
+        TextView title = dialog.findViewById(R.id.dialogTvTitle);
+        EditText editName = dialog.findViewById(R.id.editTvName);
+        EditText editIp = dialog.findViewById(R.id.editTvIp);
+        EditText editMac = dialog.findViewById(R.id.editTvMac);
+        MaterialButton btnCancel = dialog.findViewById(R.id.btnCancelEdit);
+        MaterialButton btnSave = dialog.findViewById(R.id.btnSaveEdit);
+
+        title.setText("Atur " + device.getName());
+        editName.setText(device.getName());
+        editIp.setText(device.getIp());
+        editMac.setText(device.getMac());
+
+        btnCancel.setOnClickListener(v -> dialog.dismiss());
+
+        btnSave.setOnClickListener(v -> {
+            String newName = editName.getText().toString().trim();
+            String newIp = editIp.getText().toString().trim();
+            String newMac = editMac.getText().toString().trim();
+
+            if (TextUtils.isEmpty(newName)) {
+                newName = "TV " + device.getId();
+            }
+            if (TextUtils.isEmpty(newIp)) {
+                Toast.makeText(MainActivity.this, "Alamat IP tidak boleh kosong", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            deviceManager.updateDevice(slotIndex, newName, newIp, newMac);
+            selectTv(slotIndex, false);
+            Toast.makeText(MainActivity.this, "Pengaturan " + newName + " berhasil disimpan", Toast.LENGTH_SHORT).show();
+            dialog.dismiss();
+        });
+
+        dialog.show();
     }
 
-    /** Sets up all button click listeners. */
+    // ──────────────────────────────────────────────────────────────────────────
+    // Click Listeners
+    // ──────────────────────────────────────────────────────────────────────────
+
     private void setupClickListeners() {
         binding.btnConnect.setOnClickListener(v -> onConnectClicked());
+
+        // Guide and About Dialogs
+        binding.btnGuide.setOnClickListener(v -> showUserGuideDialog());
+        binding.btnAbout.setOnClickListener(v -> showAboutDialog());
 
         // Quick Presets
         binding.btn15.setOnClickListener(v -> setTimer(15));
@@ -129,6 +224,34 @@ public class MainActivity extends AppCompatActivity {
         binding.btnCancel.setOnClickListener(v -> cancelTimer());
     }
 
+    /** Shows the User Guide (Cara Penggunaan) Dialog. */
+    private void showUserGuideDialog() {
+        Dialog dialog = new Dialog(this);
+        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
+        dialog.setContentView(R.layout.dialog_user_guide);
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+        }
+
+        MaterialButton btnClose = dialog.findViewById(R.id.btnCloseGuide);
+        btnClose.setOnClickListener(v -> dialog.dismiss());
+        dialog.show();
+    }
+
+    /** Shows the About Dialog (Tentang Aplikasi & Pengembang). */
+    private void showAboutDialog() {
+        Dialog dialog = new Dialog(this);
+        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
+        dialog.setContentView(R.layout.dialog_about);
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+        }
+
+        MaterialButton btnClose = dialog.findViewById(R.id.btnCloseAbout);
+        btnClose.setOnClickListener(v -> dialog.dismiss());
+        dialog.show();
+    }
+
     /** Adjusts the number in editCustomMinutes by delta (e.g. +15 or -15). */
     private void adjustCustomMinutes(int delta) {
         String text = binding.editCustomMinutes.getText().toString().trim();
@@ -136,8 +259,7 @@ public class MainActivity extends AppCompatActivity {
         if (!TextUtils.isEmpty(text)) {
             try {
                 current = Integer.parseInt(text);
-            } catch (NumberFormatException ignored) {
-            }
+            } catch (NumberFormatException ignored) {}
         }
         int next = current + delta;
         if (next < 1) next = 1;
@@ -167,7 +289,7 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    /** Called when the Connect button is tapped. Validates IP and attempts connection. */
+    /** Connects to the active TV with automatic Wake-on-LAN fallback. */
     private void onConnectClicked() {
         String ip = binding.editIpAddress.getText().toString().trim();
         if (TextUtils.isEmpty(ip)) {
@@ -184,16 +306,21 @@ public class MainActivity extends AppCompatActivity {
         }
 
         currentIp = ip;
-        saveIp(ip);
+        TvDevice device = deviceManager.getSelectedDevice();
+        if (device != null) {
+            device.setIp(ip);
+            deviceManager.saveDevices();
+        }
+
         binding.btnConnect.setEnabled(false);
 
-        // Attempt to connect by fetching status with automatic Wake-on-LAN recovery
+        // Attempt to connect by fetching status
         executor.execute(() -> {
             TvApiClient.StatusResponse response = apiClient.getStatus(currentIp);
 
             // If first attempt failed, check if we have a saved MAC address to wake the TV
             if (response == null) {
-                String savedMac = getSharedPreferences(PREFS_NAME, MODE_PRIVATE).getString(KEY_LAST_MAC, "");
+                String savedMac = device != null ? device.getMac() : "";
                 if (!TextUtils.isEmpty(savedMac)) {
                     handler.post(() -> Toast.makeText(MainActivity.this,
                             "TV belum merespons. Mengirim sinyal bangun (Wake-on-LAN)...", Toast.LENGTH_SHORT).show());
@@ -210,11 +337,9 @@ public class MainActivity extends AppCompatActivity {
                 binding.btnConnect.setEnabled(true);
                 if (finalResponse != null) {
                     isConnected = true;
-                    if (!TextUtils.isEmpty(finalResponse.macAddress)) {
-                        getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
-                                .edit()
-                                .putString(KEY_LAST_MAC, finalResponse.macAddress)
-                                .apply();
+                    if (!TextUtils.isEmpty(finalResponse.macAddress) && device != null) {
+                        device.setMac(finalResponse.macAddress);
+                        deviceManager.saveDevices();
                     }
                     updateConnectionUI(true);
                     updateTimerUI(finalResponse);
@@ -316,11 +441,7 @@ public class MainActivity extends AppCompatActivity {
         handler.removeCallbacks(pollRunnable);
     }
 
-    /**
-     * Updates the connection status indicator (dot color and text).
-     *
-     * @param connected Whether the app is currently connected to the TV server.
-     */
+    /** Updates the connection status indicator (dot color and text). */
     private void updateConnectionUI(boolean connected) {
         if (connected) {
             binding.viewStatusDot.setBackgroundResource(R.drawable.status_dot_connected);
@@ -336,11 +457,7 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    /**
-     * Updates the timer display based on the server response.
-     *
-     * @param response The status response from the TV server.
-     */
+    /** Updates the timer display based on the server response. */
     private void updateTimerUI(TvApiClient.StatusResponse response) {
         binding.circularTimerView.setMaxSeconds(response.totalSeconds);
         binding.circularTimerView.setRemainingSeconds(response.remainingSeconds);
