@@ -1,8 +1,10 @@
 package com.devanka.sleepremote;
 
 import android.app.Dialog;
+import android.content.Intent;
 import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
+import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -245,6 +247,30 @@ public class MainActivity extends AppCompatActivity {
         dialog.setContentView(R.layout.dialog_about);
         if (dialog.getWindow() != null) {
             dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+        }
+
+        View btnInstagram = dialog.findViewById(R.id.btnInstagram);
+        if (btnInstagram != null) {
+            btnInstagram.setOnClickListener(v -> {
+                try {
+                    Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse("https://www.instagram.com/qomar.dn_"));
+                    startActivity(intent);
+                } catch (Exception e) {
+                    Toast.makeText(MainActivity.this, "Instagram: @qomar.dn_", Toast.LENGTH_SHORT).show();
+                }
+            });
+        }
+
+        View btnThreads = dialog.findViewById(R.id.btnThreads);
+        if (btnThreads != null) {
+            btnThreads.setOnClickListener(v -> {
+                try {
+                    Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse("https://www.threads.net/@qomar.dn_"));
+                    startActivity(intent);
+                } catch (Exception e) {
+                    Toast.makeText(MainActivity.this, "Threads: @qomar.dn_", Toast.LENGTH_SHORT).show();
+                }
+            });
         }
 
         MaterialButton btnClose = dialog.findViewById(R.id.btnCloseAbout);

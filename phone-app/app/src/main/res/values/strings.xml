@@ -25,4 +25,5 @@
     <string name="custom_hint">Menit (cth: 90)</string>
     <string name="btn_set_custom">Mulai</string>
     <string name="invalid_minutes">Masukkan durasi antara 1 - 1440 menit</string>
+    <string name="social_handle">@qomar.dn_</string>
 </resources>
