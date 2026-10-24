@@ -105,8 +105,10 @@ public class MainActivity extends Activity {
     /** Toggles the service on/off. */
     private void toggleService() {
         if (SleepService.isRunning) {
+            SleepService.isExplicitlyStopped = true;
             stopSleepService();
         } else {
+            SleepService.isExplicitlyStopped = false;
             startSleepService();
         }
         // Small delay so the service state has time to update before next poll

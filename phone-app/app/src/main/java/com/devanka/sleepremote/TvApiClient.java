@@ -25,12 +25,14 @@ public class TvApiClient {
         public int remainingSeconds;
         public int totalSeconds;
         public String serverName;
+        public String macAddress;
 
-        public StatusResponse(boolean active, int remainingSeconds, int totalSeconds, String serverName) {
+        public StatusResponse(boolean active, int remainingSeconds, int totalSeconds, String serverName, String macAddress) {
             this.active = active;
             this.remainingSeconds = remainingSeconds;
             this.totalSeconds = totalSeconds;
             this.serverName = serverName;
+            this.macAddress = macAddress;
         }
     }
 
@@ -120,7 +122,8 @@ public class TvApiClient {
             int remainingSeconds = json.optInt("remaining_seconds", 0);
             int totalSeconds = json.optInt("total_seconds", 0);
             String serverName = json.optString("server", "TV");
-            return new StatusResponse(active, remainingSeconds, totalSeconds, serverName);
+            String mac = json.optString("mac", "");
+            return new StatusResponse(active, remainingSeconds, totalSeconds, serverName, mac);
         } catch (Exception e) {
             return null;
         }

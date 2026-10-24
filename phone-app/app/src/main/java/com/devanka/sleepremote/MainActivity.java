@@ -24,6 +24,7 @@ public class MainActivity extends AppCompatActivity {
 
     private static final String PREFS_NAME = "sleep_remote_prefs";
     private static final String KEY_LAST_IP = "last_ip";
+    private static final String KEY_LAST_MAC = "last_mac";
     private static final String DEFAULT_IP = "192.168.1.78";
     private static final long POLL_INTERVAL_MS = 1000;
 
@@ -186,15 +187,37 @@ public class MainActivity extends AppCompatActivity {
         saveIp(ip);
         binding.btnConnect.setEnabled(false);
 
-        // Attempt to connect by fetching status
+        // Attempt to connect by fetching status with automatic Wake-on-LAN recovery
         executor.execute(() -> {
             TvApiClient.StatusResponse response = apiClient.getStatus(currentIp);
+
+            // If first attempt failed, check if we have a saved MAC address to wake the TV
+            if (response == null) {
+                String savedMac = getSharedPreferences(PREFS_NAME, MODE_PRIVATE).getString(KEY_LAST_MAC, "");
+                if (!TextUtils.isEmpty(savedMac)) {
+                    handler.post(() -> Toast.makeText(MainActivity.this,
+                            "TV belum merespons. Mengirim sinyal bangun (Wake-on-LAN)...", Toast.LENGTH_SHORT).show());
+                    WakeOnLan.sendWakeOnLan(currentIp, savedMac);
+                    try {
+                        Thread.sleep(2000);
+                    } catch (InterruptedException ignored) {}
+                    response = apiClient.getStatus(currentIp);
+                }
+            }
+
+            final TvApiClient.StatusResponse finalResponse = response;
             handler.post(() -> {
                 binding.btnConnect.setEnabled(true);
-                if (response != null) {
+                if (finalResponse != null) {
                     isConnected = true;
+                    if (!TextUtils.isEmpty(finalResponse.macAddress)) {
+                        getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
+                                .edit()
+                                .putString(KEY_LAST_MAC, finalResponse.macAddress)
+                                .apply();
+                    }
                     updateConnectionUI(true);
-                    updateTimerUI(response);
+                    updateTimerUI(finalResponse);
                     startPolling();
                 } else {
                     isConnected = false;

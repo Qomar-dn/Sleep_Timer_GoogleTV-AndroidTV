@@ -1,33 +1,39 @@
 package com.devanka.sleepserver;
 
+import android.app.AlarmManager;
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.Service;
 import android.app.admin.DevicePolicyManager;
+import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
+import android.net.ConnectivityManager;
+import android.net.Network;
+import android.net.NetworkCapabilities;
+import android.net.NetworkRequest;
+import android.net.wifi.WifiManager;
+import android.os.Build;
 import android.os.CountDownTimer;
+import android.os.Handler;
 import android.os.IBinder;
+import android.os.Looper;
+import android.os.PowerManager;
 import android.util.Log;
 
+import java.net.NetworkInterface;
+import java.util.Collections;
+import java.util.List;
 import java.util.Locale;
 
 /**
- * SleepService — Foreground service that hosts the HTTP server and manages
- * the sleep countdown timer.
- *
- * <h3>Responsibilities</h3>
- * <ul>
- *   <li>Starts {@link MiniHttpServer} on port 8765.</li>
- *   <li>Maintains a {@link CountDownTimer} that ticks every second.</li>
- *   <li>When the timer expires, calls {@link DevicePolicyManager#lockNow()}
- *       to put the TV to sleep.</li>
- *   <li>Shows a persistent foreground notification with the remaining time.</li>
- *   <li>Exposes static fields so {@link MainActivity} can read state without binding.</li>
- * </ul>
+ * SleepService — Persistent Foreground Service that hosts the HTTP server,
+ * manages the sleep countdown timer, and automatically recovers when the TV wakes
+ * from standby, reboots, or changes network connection.
  */
 public class SleepService extends Service {
 
@@ -46,6 +52,9 @@ public class SleepService extends Service {
     /** Whether this service is currently running. */
     public static volatile boolean isRunning = false;
 
+    /** Whether the user manually stopped the service via UI. */
+    public static volatile boolean isExplicitlyStopped = false;
+
     /** Whether a countdown timer is currently active. */
     public static volatile boolean isTimerActive = false;
 
@@ -56,11 +65,16 @@ public class SleepService extends Service {
     public static volatile int totalSeconds = 0;
 
     // ── Instance fields ──────────────────────────────────────────────────────
-    private final android.os.Handler mainHandler = new android.os.Handler(android.os.Looper.getMainLooper());
+    private final Handler mainHandler = new Handler(Looper.getMainLooper());
     private MiniHttpServer httpServer;
     private CountDownTimer countDownTimer;
     private NotificationManager notificationManager;
     private FloatingTimerOverlay floatingOverlay;
+
+    private PowerManager.WakeLock wakeLock;
+    private WifiManager.WifiLock wifiLock;
+    private BroadcastReceiver screenReceiver;
+    private ConnectivityManager.NetworkCallback networkCallback;
 
     // ──────────────────────────────────────────────────────────────────────────
     // Lifecycle
@@ -69,33 +83,79 @@ public class SleepService extends Service {
     @Override
     public void onCreate() {
         super.onCreate();
-        Log.i(TAG, "Service created");
+        Log.i(TAG, "SleepService created");
 
+        isExplicitlyStopped = false;
         notificationManager = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
         createNotificationChannel();
 
-        // Initialize floating HUD overlay
+        // 1. Acquire Partial WakeLock to keep CPU alive in background
+        try {
+            PowerManager pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
+            if (pm != null) {
+                wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "DevankaSleepServer:WakeLock");
+                wakeLock.setReferenceCounted(false);
+                wakeLock.acquire();
+                Log.i(TAG, "WakeLock acquired");
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "Could not acquire WakeLock", e);
+        }
+
+        // 2. Acquire High-Performance WifiLock so Wi-Fi stays responsive
+        try {
+            WifiManager wm = (WifiManager) getApplicationContext().getSystemService(Context.WIFI_SERVICE);
+            if (wm != null) {
+                wifiLock = wm.createWifiLock(WifiManager.WIFI_MODE_FULL_HIGH_PERF, "DevankaSleepServer:WifiLock");
+                wifiLock.setReferenceCounted(false);
+                wifiLock.acquire();
+                Log.i(TAG, "WifiLock acquired");
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "Could not acquire WifiLock", e);
+        }
+
+        // 3. Initialize floating HUD overlay
         floatingOverlay = new FloatingTimerOverlay(this);
 
-        // Start HTTP server
-        httpServer = new MiniHttpServer(PORT, this);
-        httpServer.start();
+        // 4. Start HTTP server
+        startHttpServerSafely();
 
-        // Move to foreground immediately
-        startForeground(NOTIFICATION_ID, buildNotification("Server running — no timer set"));
+        // 5. Register dynamic Screen/Standby receiver
+        registerScreenStateReceiver();
+
+        // 6. Register Network callback
+        registerNetworkCallback();
+
+        // 7. Move to foreground immediately
+        startForeground(NOTIFICATION_ID, buildNotification(getString(R.string.service_running)));
         isRunning = true;
     }
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        // Already running — nothing extra to do
+        Log.i(TAG, "onStartCommand called (startId=" + startId + ")");
+        isExplicitlyStopped = false;
+
+        // Ensure HTTP server is active
+        startHttpServerSafely();
+
+        // Make sure foreground notification is posted
+        startForeground(NOTIFICATION_ID, buildNotification(
+                isTimerActive ? getFormattedTimeNotification() : getString(R.string.service_running)));
+        isRunning = true;
+
         return START_STICKY;
     }
 
     @Override
     public void onDestroy() {
-        Log.i(TAG, "Service destroyed");
+        Log.i(TAG, "SleepService onDestroy called (isExplicitlyStopped=" + isExplicitlyStopped + ")");
         isRunning = false;
+
+        // Clean up receivers and callbacks
+        unregisterScreenStateReceiver();
+        unregisterNetworkCallback();
 
         // Stop HTTP server
         if (httpServer != null) {
@@ -109,20 +169,144 @@ public class SleepService extends Service {
             floatingOverlay = null;
         }
 
-        // Cancel timer on main thread
+        // Cancel timer
         mainHandler.post(this::cancelTimerInternal);
+
+        // Release locks
+        if (wakeLock != null && wakeLock.isHeld()) {
+            try { wakeLock.release(); } catch (Exception ignored) {}
+        }
+        if (wifiLock != null && wifiLock.isHeld()) {
+            try { wifiLock.release(); } catch (Exception ignored) {}
+        }
+
+        // If the system killed this service (not user pressing Stop Server in UI),
+        // schedule an immediate restart watchdog via AlarmManager
+        if (!isExplicitlyStopped) {
+            scheduleWatchdogRestart();
+        }
 
         super.onDestroy();
     }
 
     @Override
     public IBinder onBind(Intent intent) {
-        // Not a bound service
         return null;
     }
 
     // ──────────────────────────────────────────────────────────────────────────
-    // Timer management (called from MiniHttpServer request handlers)
+    // Resilient HTTP Server & Network Monitoring
+    // ──────────────────────────────────────────────────────────────────────────
+
+    /** Starts or verifies the HTTP server is alive and listening. */
+    private synchronized void startHttpServerSafely() {
+        if (httpServer == null || !httpServer.isListening()) {
+            Log.i(TAG, "Starting MiniHttpServer on port " + PORT);
+            if (httpServer != null) {
+                httpServer.stop();
+            }
+            httpServer = new MiniHttpServer(PORT, this);
+            httpServer.start();
+        }
+    }
+
+    /** Registers a listener for Screen On / Off / Wakeup events. */
+    private void registerScreenStateReceiver() {
+        if (screenReceiver == null) {
+            screenReceiver = new BroadcastReceiver() {
+                @Override
+                public void onReceive(Context context, Intent intent) {
+                    String action = intent != null ? intent.getAction() : "";
+                    Log.i(TAG, "Screen state changed: " + action);
+                    if (Intent.ACTION_SCREEN_ON.equals(action) || Intent.ACTION_USER_PRESENT.equals(action)) {
+                        // TV screen turned on / resumed from standby
+                        startHttpServerSafely();
+                    }
+                }
+            };
+            IntentFilter filter = new IntentFilter();
+            filter.addAction(Intent.ACTION_SCREEN_ON);
+            filter.addAction(Intent.ACTION_SCREEN_OFF);
+            filter.addAction(Intent.ACTION_USER_PRESENT);
+            registerReceiver(screenReceiver, filter);
+        }
+    }
+
+    private void unregisterScreenStateReceiver() {
+        if (screenReceiver != null) {
+            try {
+                unregisterReceiver(screenReceiver);
+            } catch (Exception ignored) {}
+            screenReceiver = null;
+        }
+    }
+
+    /** Registers a NetworkCallback to detect Wi-Fi / Ethernet state changes. */
+    private void registerNetworkCallback() {
+        try {
+            ConnectivityManager cm = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+            if (cm != null) {
+                NetworkRequest request = new NetworkRequest.Builder()
+                        .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                        .build();
+
+                networkCallback = new ConnectivityManager.NetworkCallback() {
+                    @Override
+                    public void onAvailable(Network network) {
+                        Log.i(TAG, "Network available — ensuring HTTP server is listening");
+                        mainHandler.post(() -> startHttpServerSafely());
+                    }
+
+                    @Override
+                    public void onLost(Network network) {
+                        Log.w(TAG, "Network lost");
+                    }
+                };
+                cm.registerNetworkCallback(request, networkCallback);
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "Could not register NetworkCallback", e);
+        }
+    }
+
+    private void unregisterNetworkCallback() {
+        if (networkCallback != null) {
+            try {
+                ConnectivityManager cm = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+                if (cm != null) {
+                    cm.unregisterNetworkCallback(networkCallback);
+                }
+            } catch (Exception ignored) {}
+            networkCallback = null;
+        }
+    }
+
+    /** Schedules AlarmManager to revive the service if killed by system LMK. */
+    private void scheduleWatchdogRestart() {
+        try {
+            Intent restartIntent = new Intent(this, BootReceiver.class);
+            restartIntent.setAction("com.devanka.sleepserver.RESTART_SERVICE");
+            PendingIntent pi = PendingIntent.getBroadcast(
+                    this, 101, restartIntent,
+                    PendingIntent.FLAG_ONE_SHOT | PendingIntent.FLAG_IMMUTABLE
+            );
+            AlarmManager am = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
+            if (am != null) {
+                long triggerAt = System.currentTimeMillis() + 1500;
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                    am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAt, pi);
+                } else {
+                    am.setExact(AlarmManager.RTC_WAKEUP, triggerAt, pi);
+                }
+                Log.i(TAG, "Scheduled watchdog restart in 1.5s");
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to schedule watchdog restart", e);
+        }
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // Timer management
     // ──────────────────────────────────────────────────────────────────────────
 
     /**
@@ -188,7 +372,7 @@ public class SleepService extends Service {
         });
     }
 
-    /** Internal cancel without notification update (used by onDestroy). */
+    /** Internal cancel without notification update. */
     private void cancelTimerInternal() {
         if (countDownTimer != null) {
             countDownTimer.cancel();
@@ -203,12 +387,39 @@ public class SleepService extends Service {
     }
 
     /**
-     * Returns the current status as a JSON string.
+     * Returns the current status as a JSON string, including TV MAC address.
      */
     public String getStatusJson() {
+        String mac = getMacAddress();
         return String.format(Locale.US,
-                "{\"active\":%b,\"remaining_seconds\":%d,\"total_seconds\":%d,\"server\":\"Devanka TV\"}",
-                isTimerActive, remainingSeconds, totalSeconds);
+                "{\"active\":%b,\"remaining_seconds\":%d,\"total_seconds\":%d,\"server\":\"Devanka TV\",\"mac\":\"%s\"}",
+                isTimerActive, remainingSeconds, totalSeconds, mac);
+    }
+
+    /**
+     * Queries the device's network hardware address (MAC).
+     */
+    public static String getMacAddress() {
+        try {
+            List<NetworkInterface> interfaces = Collections.list(NetworkInterface.getNetworkInterfaces());
+            for (NetworkInterface intf : interfaces) {
+                String name = intf.getName().toLowerCase(Locale.US);
+                if (name.contains("wlan") || name.contains("eth")) {
+                    byte[] mac = intf.getHardwareAddress();
+                    if (mac != null && mac.length > 0) {
+                        StringBuilder buf = new StringBuilder();
+                        for (byte b : mac) {
+                            buf.append(String.format("%02X:", b));
+                        }
+                        if (buf.length() > 0) {
+                            buf.deleteCharAt(buf.length() - 1);
+                        }
+                        return buf.toString();
+                    }
+                }
+            }
+        } catch (Exception ignored) {}
+        return "";
     }
 
     // ──────────────────────────────────────────────────────────────────────────
@@ -216,22 +427,18 @@ public class SleepService extends Service {
     // ──────────────────────────────────────────────────────────────────────────
 
     /**
-     * Uses DevicePolicyManager.lockNow() to turn the screen off / put the TV
-     * to sleep. Requires the app to be registered as a Device Admin.
+     * Uses DevicePolicyManager.lockNow() to turn the screen off / put the TV to sleep.
      */
     private void putTvToSleep() {
         try {
-            DevicePolicyManager dpm = (DevicePolicyManager)
-                    getSystemService(Context.DEVICE_POLICY_SERVICE);
-            ComponentName adminComponent =
-                    new ComponentName(this, SleepDeviceAdmin.class);
+            DevicePolicyManager dpm = (DevicePolicyManager) getSystemService(Context.DEVICE_POLICY_SERVICE);
+            ComponentName adminComponent = new ComponentName(this, SleepDeviceAdmin.class);
 
             if (dpm != null && dpm.isAdminActive(adminComponent)) {
                 dpm.lockNow();
                 Log.i(TAG, "lockNow() called successfully");
             } else {
-                Log.w(TAG, "Device admin not active — cannot lock screen. " +
-                        "Please enable Device Admin for this app in Settings.");
+                Log.w(TAG, "Device admin not active — cannot lock screen.");
             }
         } catch (Exception e) {
             Log.e(TAG, "Failed to lock device", e);
@@ -242,24 +449,31 @@ public class SleepService extends Service {
     // Notification helpers
     // ──────────────────────────────────────────────────────────────────────────
 
-    /** Creates the notification channel (required on API 26+). */
     private void createNotificationChannel() {
-        NotificationChannel channel = new NotificationChannel(
-                CHANNEL_ID,
-                getString(R.string.notification_channel_name),
-                NotificationManager.IMPORTANCE_LOW  // low = no sound
-        );
-        channel.setDescription(getString(R.string.notification_channel_desc));
-        notificationManager.createNotificationChannel(channel);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            NotificationChannel channel = new NotificationChannel(
+                    CHANNEL_ID,
+                    getString(R.string.notification_channel_name),
+                    NotificationManager.IMPORTANCE_LOW
+            );
+            channel.setDescription(getString(R.string.notification_channel_desc));
+            notificationManager.createNotificationChannel(channel);
+        }
     }
 
-    /** Builds a foreground notification with the given content text. */
     private Notification buildNotification(String contentText) {
         Intent openIntent = new Intent(this, MainActivity.class);
         PendingIntent pendingIntent = PendingIntent.getActivity(
                 this, 0, openIntent, PendingIntent.FLAG_IMMUTABLE);
 
-        return new Notification.Builder(this, CHANNEL_ID)
+        Notification.Builder builder;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            builder = new Notification.Builder(this, CHANNEL_ID);
+        } else {
+            builder = new Notification.Builder(this);
+        }
+
+        return builder
                 .setContentTitle(getString(R.string.notification_title))
                 .setContentText(contentText)
                 .setSmallIcon(android.R.drawable.ic_lock_idle_alarm)
@@ -268,17 +482,15 @@ public class SleepService extends Service {
                 .build();
     }
 
-    /** Updates the foreground notification with current timer state. */
+    private String getFormattedTimeNotification() {
+        int min = remainingSeconds / 60;
+        int sec = remainingSeconds % 60;
+        String timeStr = String.format(Locale.US, "%02d:%02d", min, sec);
+        return String.format(getString(R.string.notification_countdown), timeStr);
+    }
+
     private void updateNotification() {
-        String text;
-        if (isTimerActive) {
-            int min = remainingSeconds / 60;
-            int sec = remainingSeconds % 60;
-            String timeStr = String.format(Locale.US, "%02d:%02d", min, sec);
-            text = String.format(getString(R.string.notification_countdown), timeStr);
-        } else {
-            text = getString(R.string.notification_idle);
-        }
+        String text = isTimerActive ? getFormattedTimeNotification() : getString(R.string.notification_idle);
         notificationManager.notify(NOTIFICATION_ID, buildNotification(text));
     }
 }

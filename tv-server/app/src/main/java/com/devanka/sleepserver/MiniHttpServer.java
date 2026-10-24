@@ -80,33 +80,58 @@ public class MiniHttpServer {
         Log.i(TAG, "HTTP server stopped");
     }
 
+    /** Checks if the server is actively listening on its port. */
+    public boolean isListening() {
+        return running && serverSocket != null && !serverSocket.isClosed() && serverSocket.isBound();
+    }
+
     // ──────────────────────────────────────────────────────────────────────────
     // Accept loop
     // ──────────────────────────────────────────────────────────────────────────
 
-    /** Main accept loop — runs on the background thread. */
+    /** Main accept loop with automatic reconnect & boot retry resilience. */
     private void acceptLoop() {
-        try {
-            serverSocket = new ServerSocket(port);
-            serverSocket.setReuseAddress(true);
-            Log.i(TAG, "Listening on port " + port);
+        while (running) {
+            try {
+                if (serverSocket == null || serverSocket.isClosed()) {
+                    serverSocket = new ServerSocket();
+                    serverSocket.setReuseAddress(true);
+                    serverSocket.bind(new java.net.InetSocketAddress(port));
+                    Log.i(TAG, "MiniHttpServer successfully listening on port " + port);
+                }
 
-            while (running) {
-                try {
-                    Socket client = serverSocket.accept();
-                    // Handle each connection on its own thread
-                    new Thread(() -> handleConnection(client), "MiniHttp-Handler")
-                            .start();
-                } catch (SocketException e) {
-                    if (running) {
-                        Log.e(TAG, "Accept error", e);
+                while (running && serverSocket != null && !serverSocket.isClosed()) {
+                    try {
+                        Socket client = serverSocket.accept();
+                        // Handle each connection on its own thread
+                        new Thread(() -> handleConnection(client), "MiniHttp-Handler")
+                                .start();
+                    } catch (SocketException e) {
+                        if (running) {
+                            Log.w(TAG, "SocketException in accept (network change/sleep): " + e.getMessage());
+                            break; // Break inner loop to recreate socket cleanly
+                        }
                     }
-                    // If not running, socket was closed on purpose — exit loop
+                }
+            } catch (IOException e) {
+                if (running) {
+                    Log.w(TAG, "Failed to bind or listen on port " + port + " (network starting?), retrying in 2s...", e);
+                    try {
+                        Thread.sleep(2000);
+                    } catch (InterruptedException ie) {
+                        break;
+                    }
+                }
+            } finally {
+                if (serverSocket != null && running) {
+                    try {
+                        serverSocket.close();
+                    } catch (Exception ignored) {
+                    }
                 }
             }
-        } catch (IOException e) {
-            Log.e(TAG, "Failed to start server", e);
         }
+        Log.i(TAG, "MiniHttpServer acceptLoop terminated");
     }
 
     // ──────────────────────────────────────────────────────────────────────────
